@@ -3,6 +3,7 @@ import socket
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+
 COMMON_SERVICES = {
     21: "FTP",
     22: "SSH",
@@ -43,6 +44,8 @@ def parse_port_range(port_range):
 
 
 def scan_port(target, port):
+    """Attempt a TCP connection to a single port."""
+
     scanner = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     scanner.settimeout(0.5)
 
@@ -83,6 +86,12 @@ def main():
         type=int,
         default=100,
         help="Number of worker threads (default: 100)"
+    )
+
+    parser.add_argument(
+        "-o",
+        "--output",
+        help="Save scan results to a text file"
     )
 
     args = parser.parse_args()
@@ -137,6 +146,39 @@ def main():
     print("\n" + "-" * 32)
     print(f"Open ports found: {len(open_ports)}")
     print(f"Scan completed in {scan_duration:.2f} seconds.")
+
+    if args.output:
+        try:
+            with open(args.output, "w") as report:
+                report.write("PYTHON NETWORK PORT SCANNER REPORT\n")
+                report.write("=" * 40 + "\n")
+                report.write(f"Target: {args.target}\n")
+                report.write(f"IP Address: {target_ip}\n")
+                report.write(f"Port Range: {start_port}-{end_port}\n")
+                report.write(f"Threads: {args.threads}\n\n")
+
+                report.write(
+                    f"{'PORT':<10}{'STATE':<12}{'SERVICE'}\n"
+                )
+                report.write("-" * 32 + "\n")
+
+                for port, service in open_ports:
+                    report.write(
+                        f"{port:<10}{'OPEN':<12}{service}\n"
+                    )
+
+                report.write("\n" + "-" * 32 + "\n")
+                report.write(
+                    f"Open ports found: {len(open_ports)}\n"
+                )
+                report.write(
+                    f"Scan completed in {scan_duration:.2f} seconds.\n"
+                )
+
+            print(f"Report saved to: {args.output}")
+
+        except OSError as error:
+            print(f"Error saving report: {error}")
 
 
 if __name__ == "__main__":

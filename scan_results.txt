@@ -1,0 +1,13 @@
+PYTHON NETWORK PORT SCANNER REPORT
+========================================
+Target: 127.0.0.1
+IP Address: 127.0.0.1
+Port Range: 1-1000
+Threads: 100
+
+PORT      STATE       SERVICE
+--------------------------------
+
+--------------------------------
+Open ports found: 0
+Scan completed in 0.08 seconds.
