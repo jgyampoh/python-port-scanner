@@ -1,5 +1,6 @@
 import socket
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 COMMON_SERVICES = {
     21: "FTP",
@@ -18,17 +19,34 @@ COMMON_SERVICES = {
     8000: "HTTP-ALT"
 }
 
-# Get target from user
+
+def scan_port(target, port):
+    """Attempt a TCP connection to a single port."""
+
+    scanner = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    scanner.settimeout(0.5)
+
+    try:
+        result = scanner.connect_ex((target, port))
+
+        if result == 0:
+            service = COMMON_SERVICES.get(port, "Unknown")
+            return port, service
+
+    finally:
+        scanner.close()
+
+    return None
+
+
 target_input = input("Enter a target IP address or hostname: ")
 
-# Resolve hostname to IP address
 try:
     target = socket.gethostbyname(target_input)
 except socket.gaierror:
     print("Error: Unable to resolve target.")
     exit()
 
-# Get and validate port range
 try:
     start_port = int(input("Enter the starting port: "))
     end_port = int(input("Enter the ending port: "))
@@ -44,6 +62,7 @@ if start_port > end_port:
     print("Error: Starting port cannot be greater than ending port.")
     exit()
 
+
 print("\n" + "=" * 45)
 print("       PYTHON NETWORK PORT SCANNER")
 print("=" * 45)
@@ -54,30 +73,38 @@ print(f"Port Range: {start_port}-{end_port}")
 
 print("\nScanning...\n")
 
+start_time = time.time()
+
+open_ports = []
+
+# Scan multiple ports concurrently.
+with ThreadPoolExecutor(max_workers=100) as executor:
+
+    futures = {
+        executor.submit(scan_port, target, port): port
+        for port in range(start_port, end_port + 1)
+    }
+
+    for future in as_completed(futures):
+        result = future.result()
+
+        if result is not None:
+            open_ports.append(result)
+
+
+# Sort results because threads may finish in any order.
+open_ports.sort()
+
 print(f"{'PORT':<10}{'STATE':<12}{'SERVICE'}")
 print("-" * 32)
 
-start_time = time.time()
+for port, service in open_ports:
+    print(f"{port:<10}{'OPEN':<12}{service}")
 
-open_ports = 0
-
-for port in range(start_port, end_port + 1):
-
-    scanner = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    scanner.settimeout(0.5)
-
-    result = scanner.connect_ex((target, port))
-
-    if result == 0:
-        service = COMMON_SERVICES.get(port, "Unknown")
-        print(f"{port:<10}{'OPEN':<12}{service}")
-        open_ports += 1
-
-    scanner.close()
 
 end_time = time.time()
 scan_duration = end_time - start_time
 
 print("\n" + "-" * 32)
-print(f"Open ports found: {open_ports}")
+print(f"Open ports found: {len(open_ports)}")
 print(f"Scan completed in {scan_duration:.2f} seconds.")
